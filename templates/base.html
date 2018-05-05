@@ -3,6 +3,12 @@
     <head>
         <style>
             .error { color: red; }
+            h1 {text-align:center;}
+            textarea{
+                margin: 0;
+                width: 240px;
+                height: 120px;
+            }
         </style>
         <title>{{page_title}}</title>
     </head>
@@ -15,6 +21,7 @@
 
 <body>
     <hr />
+    <h1>{{page_header}}</h1>
     {% block content %}
     {% endblock %}
 
