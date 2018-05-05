@@ -14,10 +14,6 @@ db = SQLAlchemy(app)
 template_dir= os.path.join(os.path.dirname(__file__), 'templates')
 jinja_env= jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir), autoescape=True)
 
-
-app = Flask(__name__)
-app.config['DEBUG'] = True
-
 class Blog(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
@@ -29,23 +25,28 @@ class Blog(db.Model):
         self.content = content
 
 
+
+
 @app.route("/")
 def index():
-    template = jinja_env.get_template('base.html')
-    return template.render()
+    blogs=Blog.query.all()
+    template = jinja_env.get_template('bloghome.html')
+    return template.render(blogs=blogs)
 
 @app.route("/blog")
 def blog():
-        all_posts = Blog.query.all()
-        return render_template('base.html', page_title= "Blog Home Page", 
-        page_header="Blogs:", all_posts=all_posts)
+    if request.method=='POST':
+        title=request.form['title']
+        blogs.append(title)
+    template = jinja_env.get_template('bloghome.html')
+    return template.render(blogs=blogs)
 
 @app.route("/newpost")
 def newpost():
     template = jinja_env.get_template('newpost.html')
     return template.render()
 
-@app.route("/validate-post", methods=['POST','GET'])
+@app.route("/validate-post", methods=['POST'])
 def validate_post():
 
     title = request.form['title']
@@ -71,7 +72,12 @@ def validate_post():
            
 
     if not title_error and not content_error:
-        template = jinja_env.get_template('newpost.html')
+        if request.method=='POST':
+            new_blog= Blog(title,content)
+            db.session.add(new_blog)
+            db.session.commit()
+
+
         return redirect('/')
 
     else: 
