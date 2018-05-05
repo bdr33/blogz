@@ -85,11 +85,11 @@ def validate_post():
     else: 
         return render_template('newpost.html',title=title, content=content,title_error=title_error, 
         content_error=content_error)
-@app.route("/login", methods = ['POST'])
+
+@app.route("/login", methods = ['POST', 'GET'])
 def login():
     return render_template('login.html')
 
-@app.route("/validate-login", methods = ['POST', 'GET'])
 def validate_login():
     if request.method == 'POST':
         username = request.form['username']
@@ -109,6 +109,58 @@ def validate_login():
             return redirect ('/newpost')
         else:
             return render_template('login.html', username_error=username_error, password_error=password_error)
+
+@app.route("/signup", methods = ['POST', 'GET'])
+def signup():
+    if request.method == 'POST':
+        username= request.form['username']
+        password= request.form['password']
+        password_ver= request.form['password_ver']
+
+        username_error= ''
+        password_error= ''
+        password_ver_error=''
+
+    if user_name=="":
+        user_name_error = 'You must enter a username'
+    else: 
+        if len(user_name) <3 or len(user_name) >20:
+            user_name_error= 'Your username must be between 3 and 20 characters long'
+        else: 
+            if " " in user_name:
+                user_name_error= 'Your username cannot contain any spaces'
+
+        
+    if password=="":
+        password_error = 'You must enter a password'
+    else: 
+        if len(password) <3 or len(password)>20:
+            password_error= 'Your password must be between 3 and 20 characters long'
+        else: 
+            if " " in password: 
+                password_error= 'Your password cannot contain any spaces'
+            
+    if password_ver == "" or password_ver != password:
+        password_ver_error = "Passwords don't match"
+    
+    if email !="":
+        if len(email) <3 or len(email)>20 or " " in email: 
+            email_error='Please enter a valid email'
+        else: 
+            if email.count('@') != 1 or email.count('.') !=1:
+                email_error='Please enter a valid email'
+        
+
+    if not user_name_error and not password_error and not password_ver_error and not email_error:
+        template = jinja_env.get_template('welcome.html')
+        return template.render(user_name=user_name)
+
+    else: 
+        template = jinja_env.get_template('index_form.html')
+        return template.render(user_name=user_name, password='', 
+        password_ver='', email=email, user_name_error=user_name_error, password_error=password_error,
+         password_ver_error=password_ver_error, email_error=email_error)
+
 
 if __name__ == '__main__':
     app.run()
