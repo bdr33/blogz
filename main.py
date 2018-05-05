@@ -29,17 +29,21 @@ class Blog(db.Model):
 
 @app.route("/")
 def index():
-    blogs=Blog.query.all()
-    template = jinja_env.get_template('bloghome.html')
-    return template.render(blogs=blogs)
+    return redirect("/blog")
 
 @app.route("/blog")
 def blog():
-    if request.method=='POST':
-        title=request.form['title']
-        blogs.append(title)
-    template = jinja_env.get_template('bloghome.html')
-    return template.render(blogs=blogs)
+    if request.args.get('id'):
+        ind_id = request.args.get('id')
+        blog=Blog.query.get(ind_id)
+        template = jinja_env.get_template('ind_entry.html')
+        return template.render(blog=blog)
+    
+    else:
+        blogs=Blog.query.all()
+        template = jinja_env.get_template('bloghome.html')
+        return template.render(blogs=blogs)
+
 
 @app.route("/newpost")
 def newpost():
@@ -66,19 +70,15 @@ def validate_post():
         content_error = 'You must enter content'
     else: 
         if len(content) > 5000:
-            content_error= 'Your content may not be more than 5000 characters'
-        
-            
+            content_error= 'Your content may not be more than 5000 characters'     
            
-
     if not title_error and not content_error:
         if request.method=='POST':
             new_blog= Blog(title,content)
             db.session.add(new_blog)
             db.session.commit()
-
-
-        return redirect('/')
+            new_page="/blog?id=" + str(new_blog.id)
+        return redirect(new_page)
 
     else: 
         template = jinja_env.get_template('newpost.html')
