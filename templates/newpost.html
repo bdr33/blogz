@@ -1,7 +1,18 @@
-{% extends "base.html" %}
+ {% extends "base.html" %}  
+ {% block content %}
+        <h1>Add a Blog Entry</h1>
+        <form action="/validate-post" method="post">
+            <label>Title for your new blog:
+                <input id="title" name="title" type="text" value='{{title}}'/>
+            </label>
+            <p class="error">{{title_error}}</p>
 
-{% block content %}
-    <h1><a href=" /blog?id={{post_content.id}}">{{post_content.title}}</a><h1>
-    <p>{{post_content.body}}</p>
+            <label>Your new blog:
+                <input id="content" name="content" type="textarea" value='{{content}}'/>
+            </label>
+            <p class="error">{{content_error}}</p>
 
-{% endblock %}
+            
+            <input type="submit" value='Add Entry'/>
+        </form>
+{% endblock %}    

@@ -1,5 +1,8 @@
 from flask import Flask, request, redirect, render_template
 from flask_sqlalchemy import SQLAlchemy
+import cgi
+import os
+import jinja2
 
 app = Flask(__name__)
 app.config['DEBUG'] = True
@@ -8,61 +11,75 @@ app.config['SQLALCHEMY_ECHO'] = True
 db = SQLAlchemy(app)
 
 
+template_dir= os.path.join(os.path.dirname(__file__), 'templates')
+jinja_env= jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir), autoescape=True)
+
+
+app = Flask(__name__)
+app.config['DEBUG'] = True
+
 class Blog(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(120))
-    body = db.Column(db.String(5000))
+    content = db.Column(db.String(5000))
 
-    def __init__(self, title, body):
+    def __init__(self, title, content):
         self.title = title
-        self.body = body
+        self.content = content
 
 
-@app.route('/', methods=['GET'])
+@app.route("/")
 def index():
-    return redirect('/blog')
+    template = jinja_env.get_template('base.html')
+    return template.render()
 
-@app.route('/blog', methods=['GET'])
-def home_page():
-    if request.args.get('id'):
-        post_id = request.args.get('id')
-        post_content = Blog.query.get(post_id)
-        return render_template('newpost.html', page_title= "Blog Home Page", page_header="New Entry", post_content=post_content)
-    else:
+@app.route("/blog")
+def blog():
         all_posts = Blog.query.all()
-        return render_template('blog.html', page_title= "Blog Home Page", page_header="Blogs:", all_posts=all_posts)
+        return render_template('base.html', page_title= "Blog Home Page", 
+        page_header="Blogs:", all_posts=all_posts)
 
+@app.route("/newpost")
+def newpost():
+    template = jinja_env.get_template('newpost.html')
+    return template.render()
 
+@app.route("/validate-post", methods=['POST','GET'])
+def validate_post():
+
+    title = request.form['title']
+    content= request.form['content']
     
-
-@app.route('/newpost', methods= ['POST', 'GET'])
-def new_post():
-    if request.method == 'POST':
-        title = request.form['title']
-        body = request.form['body']
-
-        title_error= ''
-        body_error= ''
-
-        if len(title)==0:
-            title_error= "You must submit a title"
-        if len(body)==0:
-            body_error= "You must submit content"
-        if len(title)>120:
-            title_error= "Title max is 120 characters"
-        if len(body)>5000:
-            body_error= "Content max is 5000 characters"
-        if title_error or body_error: 
-            return render_template('blog.html', page_title= "New Post", page_header= "New Post", title_error= title_error, body_error=body_error)
-        
-        else: 
-            new_post= Blog(title, body)
-            db.session.add(new_post)
-            db.session.commit()
-            return redirect('/blog')
+    title_error= ''
+    content_error= ''
+    
+    if title=="":
+        title_error = 'You must enter a title'
+    else: 
+        if len(title) > 120:
+            title_error= 'Your title may not be more than 120 characters long'
         
         
+    if content=="":
+        content_error = 'You must enter content'
+    else: 
+        if len(content) > 5000:
+            content_error= 'Your content may not be more than 5000 characters'
+        
+            
+           
+
+    if not title_error and not content_error:
+        template = jinja_env.get_template('newpost.html')
+        return redirect('/')
+
+    else: 
+        template = jinja_env.get_template('newpost.html')
+        return template.render(title=title, content=content,title_error=title_error, 
+        content_error=content_error)
+
+
 
 if __name__ == '__main__':
     app.run()

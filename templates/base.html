@@ -1,23 +1,22 @@
 <!doctype html>
 <html>
     <head>
-        <title>{{page_title}}</title>
         <style>
-            .error{color:red}
+            .error { color: red; }
         </style>
+        <title>{{page_title}}</title>
     </head>
-
     <header>
         <nav>
-            <a href="/blog">Home
-            <a href="/newpost"> New Post
+            <a href="/">Main Blog Page</a>
+            <a href="/newpost">Add a New Entry</a>
         </nav>
     </header>
-    <hr />
-    <body>
-    <h1>{{page_header}}</h1>
+
+<body>
+
     {% block content %}
     {% endblock %}
 
-    </body>
+</body>
 </html>
