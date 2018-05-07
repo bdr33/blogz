@@ -7,7 +7,7 @@
     
         {% for blog in blogs %}
         <h2><a href='/blog?id={{blog.id}}'>{{blog.title}}</a></h2>
-        <p>{{blog.content}}</li>
+        <p>{{blog.content}}</p>
         {% endfor %}
     {% endif %}   
 {% endblock %}

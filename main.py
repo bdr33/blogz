@@ -1,4 +1,4 @@
-from flask import Flask, request, redirect, render_template
+from flask import Flask, request, redirect, render_template, session
 from flask_sqlalchemy import SQLAlchemy
 import cgi
 import os
@@ -8,6 +8,8 @@ app.config['DEBUG'] = True
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://blogz:launchcode@localhost:8889/blogz'
 app.config['SQLALCHEMY_ECHO'] = True
 db = SQLAlchemy(app)
+app.secret_key='1234'
+
 
 class Blog(db.Model):
 
@@ -16,10 +18,10 @@ class Blog(db.Model):
     content = db.Column(db.String(5000))
     owner_id = db.Column(db.Integer, db.ForeignKey('user.id'))
 
-    def __init__(self, title, content, author):
+    def __init__(self, title, content, owner):
         self.title = title
         self.content = content
-        self.author = author
+        self.owner = owner
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -32,22 +34,26 @@ class User(db.Model):
         self.password = password
 
 
-
-
 @app.route("/")
 def index():
-    return redirect("/blog")
+    users= User.query.all()
+    return render_template('index.html', users=users)
 
 @app.route("/blog")
 def blog():
-    if request.args.get('id'):
-        ind_id = request.args.get('id')
+    ind_id = request.args.get('id')
+    user_id= request.args.get('userid')
+
+    if ind_id:
         blog=Blog.query.get(ind_id)
         return render_template('ind_entry.html',blog=blog)
-    
-    else:
-        blogs=Blog.query.all()
-        return render_template('bloghome.html',blogs=blogs, page_header='Build a Blog')
+
+    if user_id:
+        user_posts = BLog.query.filter_by(owner_id=user_id).all()
+        return render_template('singleUser.html', user_posts=user_posts)    
+
+    blogs=Blog.query.all()
+    return render_template('bloghome.html',blogs=blogs, page_header='Build a Blog')
 
 @app.route("/newpost")
 def newpost():
@@ -75,40 +81,38 @@ def validate_post():
             content_error= 'Your content may not be more than 5000 characters'     
            
     if not title_error and not content_error:
-        if request.method=='POST':
-            new_blog= Blog(title,content)
-            db.session.add(new_blog)
-            db.session.commit()
-            new_page="/blog?id=" + str(new_blog.id)
+        owner=User.query.filter_by(username=session['username']).first()
+        new_blog= Blog(title,content, owner=owner)
+        db.session.add(new_blog)
+        db.session.commit()
+        new_page="/blog?id=" + str(new_blog.id)
         return redirect(new_page)
 
     else: 
         return render_template('newpost.html',title=title, content=content,title_error=title_error, 
         content_error=content_error)
 
-@app.route("/login", methods = ['POST', 'GET'])
-def login():
-    return render_template('login.html')
+@app.before_request
+def require_login():
+    allowed_routes = ['login', 'signup', 'blog']
+    if request.endpoint not in allowed_routes and 'username' not in session:
+        return redirect('/login')
 
-def validate_login():
+@app.route('/login', methods=['POST', 'GET'])
+def login():
     if request.method == 'POST':
         username = request.form['username']
-        password = request.form ['password']
-        #clarify this
+        password = request.form['password']
         user = User.query.filter_by(username=username).first()
-        users = User.query.all()
+        if user and user.password == password:
+            session ['username'] = username
+            return redirect ("/newpost")
 
-        if user not in users: 
-            username_error = 'User does not exist'
-
-        if user.password != password:
-            password_error = 'Password is incorrect'
-        
-        if not username_error and not password_error:
-            session['username'] = username
-            return redirect ('/newpost')
         else:
-            return render_template('login.html', username_error=username_error, password_error=password_error)
+            login_error = 'Username or password is incorrect'
+            return render_template('login.html', username=username, password="",login_error=login_error)            
+    return render_template('login.html')
+    
 
 @app.route("/signup", methods = ['POST', 'GET'])
 def signup():
@@ -116,50 +120,48 @@ def signup():
         username= request.form['username']
         password= request.form['password']
         password_ver= request.form['password_ver']
-
         username_error= ''
+        taken_error= ''
         password_error= ''
         password_ver_error=''
 
-    if user_name=="":
-        user_name_error = 'You must enter a username'
-    else: 
-        if len(user_name) <3 or len(user_name) >20:
-            user_name_error= 'Your username must be between 3 and 20 characters long'
+        if username=="":
+            username_error = 'You must enter a username'
         else: 
-            if " " in user_name:
-                user_name_error= 'Your username cannot contain any spaces'
+            if len(username) <3 or len(username) >24:
+                username_error= 'Your username must be between 3 and 25 characters long'
 
-        
-    if password=="":
-        password_error = 'You must enter a password'
-    else: 
-        if len(password) <3 or len(password)>20:
-            password_error= 'Your password must be between 3 and 20 characters long'
+        taken= User.query.filter_by(username=username).first()
+        if taken:
+            taken_error= 'Username is already taken'
+                    
+        if password=="":
+            password_error = 'You must enter a password'
         else: 
-            if " " in password: 
-                password_error= 'Your password cannot contain any spaces'
-            
-    if password_ver == "" or password_ver != password:
-        password_ver_error = "Passwords don't match"
+            if len(password) <3 or len(password)>24:
+                password_error= 'Your password must be between 3 and 25 characters long'
+                        
+        if password_ver == "" or password_ver != password:
+            password_ver_error = "Passwords don't match"     
+
+        if not username_error and not taken_error and not password_error and not password_ver_error:
+            new_user = User(username, password)
+            db.session.add(new_user)
+            db.session.commit()
+            session ['username'] = username
+            return redirect ("/newpost")
+
+        else: 
+            return render_template("signup.html", username='', password='', 
+            password_ver='', username_error=username_error, taken_error=taken_error, password_error=password_error,
+            password_ver_error=password_ver_error)
     
-    if email !="":
-        if len(email) <3 or len(email)>20 or " " in email: 
-            email_error='Please enter a valid email'
-        else: 
-            if email.count('@') != 1 or email.count('.') !=1:
-                email_error='Please enter a valid email'
-        
+    return render_template('signup.html')
 
-    if not user_name_error and not password_error and not password_ver_error and not email_error:
-        template = jinja_env.get_template('welcome.html')
-        return template.render(user_name=user_name)
-
-    else: 
-        template = jinja_env.get_template('index_form.html')
-        return template.render(user_name=user_name, password='', 
-        password_ver='', email=email, user_name_error=user_name_error, password_error=password_error,
-         password_ver_error=password_ver_error, email_error=email_error)
+@app.route("/logout")
+def logout():
+    del session['username']
+    return redirect('/blog')
 
 
 if __name__ == '__main__':
